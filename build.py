@@ -190,6 +190,8 @@ UNITS.extend(extra.EXTRA_UNITS)
 extra.load(add)
 WORDS.extend(extra.EXTRA_WORDS)
 import extra2
+import extra3
+UNITS.extend(extra3.EXTRA_UNITS3)
 UNITS.extend(extra2.EXTRA_UNITS2)
 UNITS.append(("dict","사전 기본 어휘 (빈도순)","📖",4))
 extra2.load2(add)
@@ -261,6 +263,14 @@ def ja_rom(h):
 
 def run():
     import dialects as DL, dialect_sentences as DS
+    # ---- 말뭉치(Tatoeba) 문장 카드 ----
+    import jautil
+    side3 = {}
+    tp = r'C:/Users/gjrns/AppData/Local/Temp/tat/tat_verified2.json'
+    if os.path.exists(tp):
+        extra3.TAT = tp
+        n3, side3 = extra3.load3(add, set(c['ko'] for c in C), jautil.romanize, DL._t2s.convert)
+        print('corpus sentences added', n3)
     # ---- 사전 기반 확장 단어(중·일·한 한자 일치 + 영어 뜻 교차 검증) ----
     vp = r'C:/Users/gjrns/AppData/Local/Temp/dict/vocab_verified.json'
     if os.path.exists(vp):
@@ -286,7 +296,7 @@ def run():
         c['r'] = {
             'ko': ko_rom(c['ko']) if '○○' not in c['ko'] else '',
             'jh': re.sub(r'[ 　|]+','',c['jr'].replace('%','')),
-            'jr': ja_rom(c['jr']) if '○○' not in c['jr'] else ja_rom(c['jr']),
+            'jr': (jautil.romanize(c['ja'])[1] if c['u'].startswith('t_') else (ja_rom(c['jr']) if '○○' not in c['jr'] else ja_rom(c['jr']))),
             'zh': zh_py(c['zh']),
             'wu': zh_py(c['wu']) if c['wu'] else '',
         }
@@ -294,13 +304,19 @@ def run():
             c['r']['ko'] = 'je ireumeun OO imnida'
         del c['jr']
         # ---- 대만어·광동어 ----
-        tw, yue, tws, yues = DL.make(c, DS.TW, DS.YUE)
+        sd = side3.get(c['ko'])
+        if sd:
+            tw = sd['tw'] if sd['tw'] and re.search(r'[\u4e00-\u9fff]', sd['tw']) else None
+            yue = sd['yue']
+            tws = 'c' if tw else ''; yues = 'c' if yue else ''
+        else:
+            tw, yue, tws, yues = DL.make(c, DS.TW, DS.YUE)
         if tw: 
             c['tw'] = tw; c['tws'] = tws
-            c['r']['tw'] = DL.tl(tw) if tws == 'm' else (c.pop('_twr', '') or DL.tl(tw))
+            c['r']['tw'] = DL.tl(tw) if tws in ('m', 'c') else (c.pop('_twr', '') or DL.tl(tw))
         if yue:
             c['yue'] = yue; c['yues'] = yues
-            c['r']['yue'] = DL.jp(yue) if yues == 'm' else (c.pop('_yuer', '') or DL.jp(yue))
+            c['r']['yue'] = DL.jp(yue) if yues in ('m', 'c') else (c.pop('_yuer', '') or DL.jp(yue))
         c.pop('_twr', None); c.pop('_yuer', None)
     words = []
     for j, (wu, zh, ko, note, sp) in enumerate(WORDS):

@@ -98,7 +98,7 @@ function wuBlock(c,small){
   </div>`}
 function dlBlock(c,key,label,bg,bd,fg,small){
   const t=c[key]; if(!t)return '';
-  const src=(c[key+'s']==='m')?'':'<span class="st" title="사전 자동 매칭">사전</span>';
+  const sv=c[key+'s'];const src=sv==='m'?'':(sv==='c'?'<span class="st" title="Tatoeba 말뭉치의 연결된 번역">말뭉치</span>':'<span class="st" title="사전 자동 매칭">사전</span>');
   return `<div style="margin-top:8px;padding:8px 10px;border-radius:12px;background:${bg};border:1px solid ${bd};text-align:${small?'left':'center'}">
    <span class="tag" style="background:${bd};color:${fg}">${label}</span> ${src}
    <div style="font-size:${small?'17px':'24px'};line-height:1.4">${t}</div><div class="rom">${c.r[key]||''}</div></div>`}
