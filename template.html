@@ -39,7 +39,8 @@ nav button.on{background:var(--blue);color:#fff;border-color:var(--blue)}
 .list .it:last-child{border:0}.list .t{flex:1}.list .t b{font-size:18px}
 .st{font-size:11px;border-radius:10px;padding:1px 7px;background:#eef1fb;color:#566}
 .st.k{background:#e6f6ee;color:var(--ok)}
-.w{border-bottom:1px solid var(--line);padding:10px 0}.w b{font-size:22px}
+.w{border-bottom:1px solid var(--line);padding:10px 0}
+mark{background:#fff2a8;border-radius:3px;padding:0 1px}.w b{font-size:22px}
 </style>
 </head>
 <body>
@@ -52,7 +53,7 @@ nav button.on{background:var(--blue);color:#fff;border-color:var(--blue)}
 </div><div class="note hide" id="wuNote">한 카드에 <b>표준 중국어</b>와 <b>우한말</b>이 같이 나옵니다. 우한말 병음은 표준어 기준 근사 표기이고 성조는 실제 우한 억양과 다릅니다. 🔊는 표준 중국어 발음으로만 재생돼요. 우한 현지인 발음은 직접 들어 보세요.</div></div>
 
 <nav id="nav">
- <button data-v="home">📚 학습</button><button data-v="review">🔁 복습</button><button data-v="quiz">🎯 퀴즈</button><button data-v="words">🍜 우한말</button><button data-v="prog">📈 진도</button>
+ <button data-v="home">📚 학습</button><button data-v="search">🔍 검색</button><button data-v="review">🔁 복습</button><button data-v="quiz">🎯 퀴즈</button><button data-v="words">🍜 우한말</button><button data-v="prog">📈 진도</button>
 </nav>
 <div id="view"></div>
 </div>
@@ -118,7 +119,7 @@ function render(){
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===S.view));
   $('#wuNote').classList.toggle('hide',S.lang!=='zw');
   const v=$('#view');
-  ({home:vHome,review:vReview,quiz:vQuiz,words:vWords,prog:vProg})[S.view](v);
+  ({home:vHome,search:vSearch,review:vReview,quiz:vQuiz,words:vWords,prog:vProg})[S.view](v);
 }
 
 /* ---- 학습 홈 ---- */
@@ -206,6 +207,62 @@ function vQuiz(v){
       mark(c,good);if(good)s.ok++;s.n++;
       const nx=document.createElement('div');nx.className='row';nx.innerHTML='<button class="btn">다음</button>';nx.firstChild.onclick=render;$('#op').appendChild(nx)};
     $('#op').appendChild(b)})}
+
+
+/* ---- 검색 ---- */
+const plain=x=>(x||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+let SIDX=null;
+function buildIndex(){
+  SIDX=D.c.map(c=>{const t=plain([c.ko,c.ja,c.en,c.zh,c.wu||'',c.r.ko,c.r.jh,c.r.jr,c.r.zh,c.r.wu,(D.units.find(u=>u.k===c.u)||{}).n,c.m||''].join(' '));return {c,t,n:t.replace(/[\s.,?!。，？！、'’-]/g,'')}});
+  SWORDS=D.words.map(w=>{const t=plain([w.wu,w.zh,w.ko,w.note,w.py].join(' '));return {w,t,n:t.replace(/[\s.,?!。，？！、'’-]/g,'')}});
+}
+let SWORDS=[];
+S.q=S.q||'';S.su='';S.sk='all';
+function hlq(txt,q){
+  if(!q)return txt; const i=plain(txt).indexOf(q); if(i<0||plain(txt).length!==txt.length)return txt;
+  return txt.slice(0,i)+'<mark>'+txt.slice(i,i+q.length)+'</mark>'+txt.slice(i+q.length)}
+function vSearch(v){
+  if(!SIDX)buildIndex();
+  const opts='<option value="">모든 단원</option>'+D.units.map(u=>`<option value="${u.k}" ${S.su===u.k?'selected':''}>${u.e} ${u.n}</option>`).join('');
+  v.innerHTML=`<div class="card"><input id="sq" type="search" placeholder="🔍 한국어·日本語·English·中文·우한말·발음 (예: 화장실, toire, hello, nihao, 咯)" value="${S.q.replace(/"/g,'&quot;')}" style="width:100%;border:1px solid var(--line);border-radius:12px;padding:12px;font:inherit">
+   <div class="row" style="margin-top:8px"><select id="su" style="border:1px solid var(--line);border-radius:10px;padding:8px">${opts}</select>
+   <label style="font-size:14px"><input type="checkbox" id="sk" ${S.sk==='new'?'checked':''}> 아직 안 익힌 것만</label></div>
+   <div class="muted" id="scnt" style="margin-top:6px"></div></div><div id="sres"></div>`;
+  const run=()=>{S.q=$('#sq').value;S.su=$('#su').value;S.sk=$('#sk').checked?'new':'all';doSearch()};
+  $('#sq').oninput=run;$('#su').onchange=run;$('#sk').onchange=run;doSearch();
+  if(!S.q)$('#sq').focus()}
+function doSearch(){
+  const q=plain(S.q.trim()),terms=q.split(/\s+/).filter(Boolean);
+  let res=SIDX.filter(x=>(!S.su||x.c.u===S.su)&&(!terms.length||terms.every(t=>x.t.includes(t))||x.n.includes(q.replace(/[\s.,?!。，？！、'’-]/g,'')))&&(S.sk!=='new'||!known(x.c)));
+  // 정렬: 정확히 일치 > 앞부분 일치 > 그 외, 같으면 단계 순
+  const score=x=>{if(!q)return 0;const f=[x.c.ko,x.c.ja,x.c.en,x.c.zh,x.c.wu||''].map(plain);
+    if(f.some(s=>s===q))return -3;if(f.some(s=>s.startsWith(q)))return -2;if(f.some(s=>s.includes(q)))return -1;return 0};
+  res=res.sort((a,b)=>score(a)-score(b)||uorder[a.c.u]-uorder[b.c.u]||a.c.id-b.c.id);
+  const wr=(!S.su&&terms.length)?SWORDS.filter(x=>terms.every(t=>x.t.includes(t))||x.n.includes(q.replace(/[\s.,?!。，？！、'’-]/g,''))):[];
+  $('#scnt').textContent=terms.length||S.su?`문장·단어 ${res.length}개`+(wr.length?` · 우한말 단어 ${wr.length}개`:''):`전체 ${SIDX.length}개 · 검색어를 입력하세요`;
+  const tl=q;let h='';
+  res.slice(0,80).forEach(({c})=>{
+    const un=D.units.find(u=>u.k===c.u);
+    h+=`<div class="card" style="padding:11px"><div class="row" style="margin:0 0 4px"><span class="tag">${un.e} ${un.n}</span><span class="st ${known(c)?'k':''}">${known(c)?'익힘':'새'}</span></div>
+     <div style="font-size:19px"><b>${hlq(c.ko,tl)}</b></div>
+     <div class="muted">🇯🇵 ${hlq(c.ja,tl)} <span class="rom" style="font-size:12px">${c.r.jr}</span></div>
+     <div class="muted">🇬🇧 ${hlq(c.en,tl)}</div>
+     <div class="muted">🇨🇳 ${hlq(c.zh,tl)} <span class="rom" style="font-size:12px">${c.r.zh}</span></div>
+     ${c.wu&&c.wu!==c.zh?`<div class="muted" style="color:#a24a10">우한말 ${hl(c.wu,c.zh)} <span class="rom" style="font-size:12px">${c.r.wu}</span></div>`:''}
+     <div class="row" style="margin-top:6px"><button class="btn sec" style="padding:6px 12px" data-sp="${c.id}" data-l="ko">🔊 한</button>
+      <button class="btn sec" style="padding:6px 12px" data-sp="${c.id}" data-l="ja">🔊 일</button>
+      <button class="btn sec" style="padding:6px 12px" data-sp="${c.id}" data-l="en">🔊 영</button>
+      <button class="btn sec" style="padding:6px 12px" data-sp="${c.id}" data-l="zh">🔊 중</button>
+      <button class="btn" style="padding:6px 12px" data-go="${c.u}">단원 열기</button></div></div>`});
+  if(res.length>80)h+=`<div class="muted" style="text-align:center">상위 80개만 표시합니다. 검색어를 더 구체적으로 입력해 보세요.</div>`;
+  if(wr.length){h+=`<div class="tier">🍜 우한말 단어</div><div class="card">`;
+    wr.slice(0,30).forEach(({w})=>{h+=`<div class="w"><b>${w.wu}</b> <span class="rom">${w.py}</span> <button class="btn sec" style="padding:4px 10px" data-wsp="${w.id}">🔊</button><div class="mean" style="margin-top:2px">${w.ko}</div><div class="muted">표준어: ${w.zh}</div><div class="muted">${w.note}</div></div>`});
+    h+='</div>'}
+  if(!res.length&&!wr.length&&(terms.length||S.su))h='<div class="card muted">검색 결과가 없어요. 다른 단어나 발음으로 찾아 보세요.</div>';
+  $('#sres').innerHTML=h;
+  $('#sres').querySelectorAll('[data-sp]').forEach(b=>b.onclick=()=>{const c=D.c.find(x=>x.id==b.dataset.sp);speak(c[b.dataset.l],b.dataset.l)});
+  $('#sres').querySelectorAll('[data-wsp]').forEach(b=>b.onclick=()=>{const w=D.words.find(x=>x.id==b.dataset.wsp);speak(w.sp,'zh')});
+  $('#sres').querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{S.view='home';S.unit=b.dataset.go;S.sess=null;render();window.scrollTo(0,0)})}
 
 /* ---- 우한말 ---- */
 function vWords(v){

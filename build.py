@@ -189,6 +189,15 @@ import extra
 UNITS.extend(extra.EXTRA_UNITS)
 extra.load(add)
 WORDS.extend(extra.EXTRA_WORDS)
+import extra2
+UNITS.extend(extra2.EXTRA_UNITS2)
+extra2.load2(add)
+WORDS.extend(extra2.EXTRA_WORDS2)
+_seen=set(); _w=[]
+for _x in WORDS:
+    if _x[0] in _seen: continue
+    _seen.add(_x[0]); _w.append(_x)
+WORDS[:]=_w
 
 def zh_py(t):
     t = re.sub(r'[。，、？！]', lambda m: {'。':'.','，':',','、':',','？':'?','！':'!'}[m.group(0)], t)
