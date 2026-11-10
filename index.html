@@ -27,6 +27,7 @@ nav button.on{background:var(--blue);color:#fff;border-color:var(--blue)}
 .unit:hover{border-color:var(--blue)}.unit b{display:block}.unit small{color:var(--muted)}
 .bar{height:6px;background:#e9edfb;border-radius:4px;margin-top:6px;overflow:hidden}.bar i{display:block;height:100%;background:var(--ok)}
 .big{font-size:32px;line-height:1.35;margin:6px 0;word-break:keep-all}
+.hg{color:#0b5d3b;background:#e6f6ee;border-radius:8px;padding:4px 10px;display:inline-block;font-size:19px;font-weight:700;margin:3px 0}
 .rom{color:#7a5400;background:#fff6dd;border-radius:8px;padding:3px 9px;display:inline-block;font-size:15px;margin:2px 0}
 .mean{font-size:18px;color:#2b3f9e;margin-top:8px}
 .muted{color:var(--muted);font-size:14px}
@@ -73,6 +74,86 @@ const uorder={};D.units.forEach((u,i)=>uorder[u.k]=i);
 const tierOf={};D.units.forEach(u=>tierOf[u.k]=u.t);
 
 const txt=(c,l)=>l==='zw'?c.zh:(l==='yue'||l==='tw')?(c[l]||''):c[l];
+// ===== 한글 발음 변환기 (광동어 Jyutping / 대만어 Tâi-lô) =====
+const HG=(()=>{
+const CHO='ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ',JUNG='ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ',JONG=['','ㄱ','ㄲ','ㄳ','ㄴ','ㄵ','ㄶ','ㄷ','ㄹ','ㄺ','ㄻ','ㄼ','ㄽ','ㄾ','ㄿ','ㅀ','ㅁ','ㅂ','ㅄ','ㅅ','ㅆ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+const Y={ㅏ:'ㅑ',ㅓ:'ㅕ',ㅗ:'ㅛ',ㅜ:'ㅠ',ㅔ:'ㅖ',ㅣ:'ㅣ',ㅐ:'ㅒ'},W={ㅏ:'ㅘ',ㅓ:'ㅝ',ㅔ:'ㅞ',ㅣ:'ㅟ',ㅐ:'ㅙ',ㅗ:'ㅗ',ㅜ:'ㅜ'};
+function syl(c,v,j,g){ // c초성 v중성 j종성 g글라이드(y/w)
+  if(g==='y')v=Y[v]||v; if(g==='w')v=W[v]||v;
+  const ci=CHO.indexOf(c),vi=JUNG.indexOf(v),ji=JONG.indexOf(j||'');
+  if(ci<0||vi<0||ji<0)return null;
+  return String.fromCharCode(0xAC00+(ci*21+vi)*28+ji)}
+// nuc: [첫모음, 뒷모음?]  뒷모음이 있으면 두 음절(아이, 아우 …)
+function build(c,g,nuc,coda){
+  if(nuc.length===1)return syl(c,nuc[0],coda,g);
+  const a=syl(c,nuc[0],'',g),b=syl('ㅇ',nuc[1],coda,'');
+  return a&&b?a+b:null}
+// ---------- 광동어 Jyutping ----------
+const JI={b:'ㅂ',p:'ㅍ',m:'ㅁ',f:'ㅍ',d:'ㄷ',t:'ㅌ',n:'ㄴ',l:'ㄹ',g:'ㄱ',k:'ㅋ',ng:'ㅇ',h:'ㅎ',z:'ㅈ',c:'ㅊ',s:'ㅅ',gw:'ㄱ',kw:'ㅋ',w:'ㅇ',j:'ㅇ'};
+const JF={aa:['ㅏ'],aai:['ㅏ','ㅣ'],aau:['ㅏ','ㅜ'],aam:['ㅏ','','ㅁ'],aan:['ㅏ','','ㄴ'],aang:['ㅏ','','ㅇ'],aap:['ㅏ','','ㅂ'],aat:['ㅏ','','ㅅ'],aak:['ㅏ','','ㄱ'],
+ a:['ㅏ'],ai:['ㅏ','ㅣ'],au:['ㅏ','ㅜ'],am:['ㅏ','','ㅁ'],an:['ㅏ','','ㄴ'],ang:['ㅏ','','ㅇ'],ap:['ㅏ','','ㅂ'],at:['ㅏ','','ㅅ'],ak:['ㅏ','','ㄱ'],
+ e:['ㅔ'],ei:['ㅔ','ㅣ'],eng:['ㅔ','','ㅇ'],ek:['ㅔ','','ㄱ'],
+ i:['ㅣ'],iu:['ㅣ','ㅜ'],im:['ㅣ','','ㅁ'],in:['ㅣ','','ㄴ'],ing:['ㅣ','','ㅇ'],ip:['ㅣ','','ㅂ'],it:['ㅣ','','ㅅ'],ik:['ㅣ','','ㄱ'],
+ o:['ㅗ'],oi:['ㅗ','ㅣ'],ou:['ㅗ','ㅜ'],on:['ㅗ','','ㄴ'],ong:['ㅗ','','ㅇ'],ot:['ㅗ','','ㅅ'],ok:['ㅗ','','ㄱ'],
+ u:['ㅜ'],ui:['ㅜ','ㅣ'],un:['ㅜ','','ㄴ'],ung:['ㅜ','','ㅇ'],ut:['ㅜ','','ㅅ'],uk:['ㅜ','','ㄱ'],
+ oe:['ㅓ'],oeng:['ㅓ','','ㅇ'],oek:['ㅓ','','ㄱ'],eoi:['ㅓ','ㅣ'],eon:['ㅓ','','ㄴ'],eot:['ㅓ','','ㅅ'],
+ yu:['ㅟ'],yun:['ㅝ','','ㄴ'],yut:['ㅝ','','ㅅ']};
+const JINIT=['ng','gw','kw','b','p','m','f','d','t','n','l','g','k','h','w','z','c','s','j'];
+function jySyl(s){
+  const m=/^([a-z]+)([1-6])$/.exec(s);if(!m)return null;let r=m[1];
+  if(r==='m')return '음';if(r==='ng')return '응';if(r==='hm')return '흠';if(r==='hng')return '흥';
+  let init='',i=JINIT.find(x=>r.startsWith(x)&&r.length>x.length&&JF[r.slice(x.length)]);
+  if(i){init=i;r=r.slice(i.length)}
+  const f=JF[r];if(!f)return null;
+  let g='',c=JI[init]||'ㅇ';
+  if(init==='gw'||init==='kw'||init==='w')g='w';
+  if(init==='j')g='y';
+  if(init==='j'&&(r==='yu'||r==='yun'||r==='yut')){return build('ㅇ','',['ㅠ'],f[2]||'')}
+  if(f.length===3)return build(c,g,[f[0]],f[2]);
+  if(f.length===2&&f[1])return build(c,g,[f[0],f[1]],'');
+  return build(c,g,[f[0]],'')}
+// ---------- 대만어 Tâi-lô ----------
+const TI={p:'ㅂ',ph:'ㅍ',b:'ㅂ',m:'ㅁ',t:'ㄷ',th:'ㅌ',n:'ㄴ',l:'ㄹ',k:'ㄱ',kh:'ㅋ',g:'ㄱ',ng:'ㅇ',ts:'ㅈ',tsh:'ㅊ',s:'ㅅ',j:'ㅈ',h:'ㅎ'};
+const TINIT=['tsh','ts','kh','ph','th','ng','p','b','m','t','n','l','k','g','s','j','h'];
+const TN={a:['ㅏ'],e:['ㅔ'],i:['ㅣ'],o:['ㅓ'],oo:['ㅗ'],u:['ㅜ'],ai:['ㅏ','ㅣ'],au:['ㅏ','ㅜ'],ia:['ㅑ'],io:['ㅛ'],iu:['ㅠ'],ua:['ㅘ'],ue:['ㅞ'],ui:['ㅟ'],iau:['ㅑ','ㅜ'],uai:['ㅘ','ㅣ'],ioo:['ㅛ'],iooh:['ㅛ']};
+const TCODA={m:'ㅁ',n:'ㄴ',ng:'ㅇ',p:'ㅂ',t:'ㅅ',k:'ㄱ',h:''};
+const TONE_T={'\u0301':2,'\u0300':3,'\u0302':5,'\u0304':7,'\u030d':8,'\u030b':9};
+function tlSyl(s){
+  s=s.normalize('NFD');let tone=1;
+  s=s.replace(/[\u0300-\u036f]/g,m=>{if(TONE_T[m])tone=TONE_T[m];return ''}).toLowerCase().replace(/[^a-z]/g,'');
+  if(!s)return null;
+  if(s==='m'||s==='mh')return '음';if(s==='ng'||s==='ngh')return '응';
+  let init='',i=TINIT.find(x=>s.startsWith(x)&&s.length>x.length);
+  if(i&&!/^(ng|m)h?$/.test(s)){const rest=s.slice(i.length);if(/^(a|e|i|o|u)/.test(rest)||rest==='ng'||rest==='ngh'){init=i;s=rest}}
+  let coda='';
+  // 끝 자음: ng, m, n, p, t, k, h  (비음 nn 은 ㅇ)
+  let mm=/^(.*?)(nnh|nn|ng|m|n|p|t|k|h)$/.exec(s);
+  let nuc=s;
+  if(mm&&TN[mm[1]]){nuc=mm[1];const e=mm[2];coda=(e==='nn'||e==='nnh')?'ㅇ':TCODA[e]}
+  if(s==='ng'||s==='ngh'){return build(TI[init]||'ㅇ','',['ㅜ'],'ㅇ')}
+  if(!TN[nuc])return null;
+  const f=TN[nuc];
+  return build(TI[init]||'ㅇ','',f,coda)}
+function conv(str,kind){
+  if(!str)return '';
+  const out=[];
+  if(kind==='yue'){
+    for(const t of str.split(/(\s+|[.,!?;:()「」。，！？、“”"…*/])/)){
+      if(!t||/^\s+$/.test(t)){if(t)out.push(' ');continue}
+      if(/^[.,!?;:()「」。，！？、“”"…*/]$/.test(t)){out.push(t);continue}
+      const h=jySyl(t.toLowerCase());out.push(h==null?'['+t+']':h)}
+  }else{
+    for(const w of str.split(/(\s+|[.,!?;:()「」。，！？、“”"…*/])/)){
+      if(!w||/^\s+$/.test(w)){if(w)out.push(' ');continue}
+      if(/^[.,!?;:()「」。，！？、“”"…*/]$/.test(w)){out.push(w);continue}
+      const parts=w.split(/-+/);let r='',ok=true;
+      for(const p of parts){if(!p)continue;const h=tlSyl(p);if(h==null){ok=false;break}r+=h}
+      out.push(ok?r:'['+w+']')}
+  }
+  return out.join('').replace(/\s+/g,' ').trim()}
+return {conv,jySyl,tlSyl}})();
+
+const hgl=(r,k,sm)=>{const v=r?HG.conv(r,k):'';return v?`<div class="hg"${sm?' style="font-size:14px"':''}>🇰🇷 ${v}</div>`:''};
 function rom(c,l){
   if(l==='ko')return c.r.ko; if(l==='ja')return c.r.jh+'　'+c.r.jr; if(l==='zh')return c.r.zh;
   if(l==='zw')return c.r.zh; if(l==='yue'||l==='tw')return c.r[l]||''; return '';}
@@ -103,7 +184,7 @@ function dlBlock(c,key,label,bg,bd,fg,small){
   const sv=c[key+'s'];const src=sv==='m'?'':(sv==='c'?'<span class="st" title="Tatoeba 말뭉치의 연결된 번역">말뭉치</span>':'<span class="st" title="사전 자동 매칭">사전</span>');
   return `<div style="margin-top:8px;padding:8px 10px;border-radius:12px;background:${bg};border:1px solid ${bd};text-align:${small?'left':'center'}">
    <span class="tag" style="background:${bd};color:${fg}">${label}</span> ${src}
-   <div style="font-size:${small?'17px':'24px'};line-height:1.4">${t}</div><div class="rom">${c.r[key]||''}</div></div>`}
+   <div style="font-size:${small?'17px':'24px'};line-height:1.4">${t}</div><div class="rom">${c.r[key]||''}</div>${hgl(c.r[key],key,small)}</div>`}
 const twBlock=(c,s)=>dlBlock(c,'tw','대만어 台語','#eef9f1','#cfe9d7','#1d6b3a',s);
 const yueBlock=(c,s)=>dlBlock(c,'yue','광동어 粵語','#f2f0fb','#d9d3f3','#4b3fa3',s);
 function refBlock(c,l){
@@ -118,7 +199,7 @@ function refBlock(c,l){
 function show(c,l){
   let h=`<div class="big">${txt(c,l)}</div>${rom(c,l)?`<div class="rom">${rom(c,l)}</div>`:''}`;
   if(l==='zw')h=`<span class="tag">표준 중국어 普通话</span>`+h+wuBlock(c,false)+twBlock(c,false)+yueBlock(c,false);
-  if(l==='yue'||l==='tw')h+=refBlock(c,l);
+  if(l==='yue'||l==='tw')h+='<div>'+hgl(c.r[l],l)+'</div>'+refBlock(c,l);
   return h}
 
 function speak(t,l){
@@ -138,7 +219,7 @@ function init(){
 function render(){
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===S.view));
   $('#wuNote').classList.toggle('hide',S.lang!=='zw'&&S.lang!=='yue'&&S.lang!=='tw');
-  $('#wuNote').innerHTML=S.lang==='zw'?'한 카드에 <b>표준 중국어 · 우한말 · 대만어 · 광동어</b>가 같이 나옵니다. 우한말·대만어·광동어는 원어민 검수 없이 사전과 변환기로 만든 표기입니다. 🔊는 표준 중국어 발음으로만 재생돼요.':'<b>독립 학습 모드</b>입니다. 문장은 Tatoeba 말뭉치(사용자가 올린 문장)와 대만어 사전에서 가져왔고 원어민 검수를 받지 않았습니다. 🔊는 기기에 해당 음성이 있을 때만 나요. 한국어 뜻이 없는 문장은 영어·중국어 뜻으로 표시됩니다.';
+  $('#wuNote').innerHTML=S.lang==='zw'?'한 카드에 <b>표준 중국어 · 우한말 · 대만어 · 광동어</b>가 같이 나옵니다. 우한말·대만어·광동어는 원어민 검수 없이 사전과 변환기로 만든 표기입니다. 🔊는 표준 중국어 발음으로만 재생돼요.':'<b>독립 학습 모드</b>입니다. 문장은 Tatoeba 말뭉치(사용자가 올린 문장)와 대만어 사전에서 가져왔고 원어민 검수를 받지 않았습니다. 초록색 🇰🇷 줄은 로마자를 한글로 옮긴 <b>대략의 발음</b>입니다(성조는 표시 못 해요). 🔊는 기기에 해당 음성이 있을 때만 나요. 한국어 뜻이 없는 문장은 영어·중국어 뜻으로 표시됩니다.';
   const v=$('#view');
   ({home:vHome,search:vSearch,dict:vDict,review:vReview,quiz:vQuiz,words:vWords,prog:vProg})[S.view](v);
 }
@@ -165,7 +246,7 @@ function vUnit(v){
   let h=`<div class="row" style="margin:0 0 8px"><button class="btn sec" onclick="S.unit=null;render()">◀ 목록</button><b>${u.e} ${u.n}</b></div>
   <div class="card"><div class="row" style="margin:0"><button class="btn" onclick="startStudy('${u.k}')">▶ 학습 시작 (새 카드 ${fresh(u.k).length}개)</button>
   <button class="btn sec" onclick="startQuiz('${u.k}')">🎯 이 단원 퀴즈</button></div></div><div class="card list">`;
-  it.forEach(c=>{h+=`<div class="it"><div class="t"><b>${txt(c,S.lang)}</b><br><span class="muted">${rom(c,S.lang)}</span>${S.lang==='zw'?wuBlock(c,true)+twBlock(c,true)+yueBlock(c,true):''}${refBlock(c,S.lang)}<br><span class="muted">${mean(c)}</span></div>
+  it.forEach(c=>{h+=`<div class="it"><div class="t"><b>${txt(c,S.lang)}</b><br><span class="muted">${rom(c,S.lang)}</span>${(S.lang==='yue'||S.lang==='tw')?'<br>'+hgl(c.r[S.lang],S.lang,1):''}${S.lang==='zw'?wuBlock(c,true)+twBlock(c,true)+yueBlock(c,true):''}${refBlock(c,S.lang)}<br><span class="muted">${mean(c)}</span></div>
    <span class="st ${known(c)?'k':''}">${known(c)?'익힘':P(c).d?'학습중':'새'}</span><button class="btn sec" onclick='speak(${JSON.stringify(speakTxt(c,S.lang))},"${S.lang}")'>🔊</button></div>`});
   v.innerHTML=h+'</div>'}
 
@@ -248,8 +329,8 @@ async function loadDict(k){
   return DCACHE[k]={rows,idx}}
 function dictLine(k,r){
   if(k==='cedict')return `<b style="font-size:20px">${r[0]}${r[1]!==r[0]?` <span class="muted">(${r[1]})</span>`:''}</b> <span class="rom">${r[2]}</span><div class="mean" style="font-size:16px">${r[3]}</div>`;
-  if(k==='ccanto')return `<b style="font-size:20px">${r[0]}</b> <span class="rom">${r[2]}</span><div class="mean" style="font-size:16px">${r[3]}</div>`;
-  if(k==='taigi')return `<b style="font-size:20px">${r[0]||r[1]}</b> <span class="rom">${r[1]}</span> <span class="muted">(POJ ${r[2]})</span><div class="mean" style="font-size:16px">${r[3]}</div>`;
+  if(k==='ccanto')return `<b style="font-size:20px">${r[0]}</b> <span class="rom">${r[2]}</span> ${hgl(r[2],'yue',1)}<div class="mean" style="font-size:16px">${r[3]}</div>`;
+  if(k==='taigi')return `<b style="font-size:20px">${r[0]||r[1]}</b> <span class="rom">${r[1]}</span> ${hgl(r[1],'tw',1)} <span class="muted">(POJ ${r[2]})</span><div class="mean" style="font-size:16px">${r[3]}</div>`;
   if(k==='jmdict')return `<b style="font-size:20px">${r[0]||r[1]}</b> ${r[0]?`<span class="rom">${r[1]}</span>`:''} ${r[3]?'<span class="st k">자주 씀</span>':''}<div class="mean" style="font-size:16px">${r[2]}</div>`;
   return `<b style="font-size:20px">${r[0]}</b> ${r[1]?`<span class="muted">(${r[1]})</span>`:''}<div class="mean" style="font-size:16px">${r[2]}</div>`}
 function vDict(v){
@@ -319,12 +400,12 @@ function doSearch(){
   res.slice(0,80).forEach(({c})=>{
     const un=D.units.find(u=>u.k===c.u);
     h+=`<div class="card" style="padding:11px"><div class="row" style="margin:0 0 4px"><span class="tag">${un.e} ${un.n}</span><span class="st ${known(c)?'k':''}">${known(c)?'익힘':'새'}</span></div>
-     <div style="font-size:19px"><b>${c.L?hlq(c[c.L],tl)+' <span class="tag" style="background:#eef1fb">'+(c.L==='yue'?'광동어':'대만어')+'</span>':hlq(c.ko,tl)}</b>${c.L&&c.r[c.L]?'<div class="rom" style="font-size:13px">'+c.r[c.L]+'</div>':''}${c.L&&c.ko?'<div class="muted">🇰🇷 '+c.ko+'</div>':''}</div>
+     <div style="font-size:19px"><b>${c.L?hlq(c[c.L],tl)+' <span class="tag" style="background:#eef1fb">'+(c.L==='yue'?'광동어':'대만어')+'</span>':hlq(c.ko,tl)}</b>${c.L&&c.r[c.L]?'<div class="rom" style="font-size:13px">'+c.r[c.L]+'</div>'+hgl(c.r[c.L],c.L,1):''}${c.L&&c.ko?'<div class="muted">🇰🇷 '+c.ko+'</div>':''}</div>
      ${c.ja||!c.L?`<div class="muted">🇯🇵 ${hlq(c.ja,tl)} <span class="rom" style="font-size:12px">${c.r.jr||''}</span></div>`:''}
      ${c.en?`<div class="muted">🇬🇧 ${hlq(c.en,tl)}</div>`:''}
      ${c.zh?`<div class="muted">🇨🇳 ${hlq(c.zh,tl)} <span class="rom" style="font-size:12px">${c.r.zh}</span></div>`:''}
-     ${c.tw&&c.L!=='tw'?`<div class="muted" style="color:#1d6b3a">대만어 ${c.tw} <span class="rom" style="font-size:12px">${c.r.tw||''}</span></div>`:''}
-     ${c.yue&&c.L!=='yue'?`<div class="muted" style="color:#4b3fa3">광동어 ${c.yue} <span class="rom" style="font-size:12px">${c.r.yue||''}</span></div>`:''}
+     ${c.tw&&c.L!=='tw'?`<div class="muted" style="color:#1d6b3a">대만어 ${c.tw} <span class="rom" style="font-size:12px">${c.r.tw||''}</span> ${hgl(c.r.tw,'tw',1)}</div>`:''}
+     ${c.yue&&c.L!=='yue'?`<div class="muted" style="color:#4b3fa3">광동어 ${c.yue} <span class="rom" style="font-size:12px">${c.r.yue||''}</span> ${hgl(c.r.yue,'yue',1)}</div>`:''}
      ${c.wu&&c.wu!==c.zh?`<div class="muted" style="color:#a24a10">우한말 ${hl(c.wu,c.zh)} <span class="rom" style="font-size:12px">${c.r.wu}</span></div>`:''}
      <div class="row" style="margin-top:6px">${c.L?`<button class="btn sec" style="padding:6px 12px" data-sp="${c.id}" data-l="${c.L}">🔊 ${c.L==='yue'?'광동어':'대만어'}</button>`:`<button class="btn sec" style="padding:6px 12px" data-sp="${c.id}" data-l="ko">🔊 한</button>
       <button class="btn sec" style="padding:6px 12px" data-sp="${c.id}" data-l="ja">🔊 일</button>
