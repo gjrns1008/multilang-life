@@ -50,17 +50,17 @@ mark{background:#fff2a8;border-radius:3px;padding:0 1px}.w b{font-size:22px}
 <div class="card"><div class="sel">
  <div><label>내 언어 (뜻 표시)</label><select id="my"></select></div>
  <div><label>배울 언어</label><select id="lang"></select></div>
-</div><div class="note hide" id="wuNote">한 카드에 <b>표준 중국어</b>와 <b>우한말</b>이 같이 나옵니다. 우한말 병음은 표준어 기준 근사 표기이고 성조는 실제 우한 억양과 다릅니다. 🔊는 표준 중국어 발음으로만 재생돼요. 우한 현지인 발음은 직접 들어 보세요.</div></div>
+</div><div class="note hide" id="wuNote">한 카드에 <b>표준 중국어 · 우한말 · 대만어 · 광동어</b>가 같이 나옵니다. 우한말·대만어·광동어는 원어민 검수 없이 사전과 변환기로 만든 표기입니다. 🔊는 표준 중국어 발음으로만 재생돼요. 대만어(TL)·광동어(Jyutping)는 로마자 발음 표기를 참고하세요.</div></div>
 
 <nav id="nav">
- <button data-v="home">📚 학습</button><button data-v="search">🔍 검색</button><button data-v="review">🔁 복습</button><button data-v="quiz">🎯 퀴즈</button><button data-v="words">🍜 우한말</button><button data-v="prog">📈 진도</button>
+ <button data-v="home">📚 학습</button><button data-v="search">🔍 검색</button><button data-v="dict">📖 사전</button><button data-v="review">🔁 복습</button><button data-v="quiz">🎯 퀴즈</button><button data-v="words">🍜 우한말</button><button data-v="prog">📈 진도</button>
 </nav>
 <div id="view"></div>
 </div>
 
 <script>
 const D=/*DATA*/null;
-const LN={ko:'한국어',ja:'日本語',en:'English',zh:'中文 (표준)',zw:'중국어 + 우한말 (普通话+武汉话)'};
+const LN={ko:'한국어',ja:'日本語',en:'English',zh:'中文 (표준)',zw:'중국어 + 우한말·대만어·광동어'};
 const TTS={ko:'ko-KR',ja:'ja-JP',en:'en-US',zh:'zh-CN',zw:'zh-CN'};
 const $=s=>document.querySelector(s);
 const store=JSON.parse(localStorage.getItem('ml_state')||'{}');
@@ -96,9 +96,17 @@ function wuBlock(c,small){
           :`<div style="${small?'font-size:18px':'font-size:28px'};line-height:1.4">${hl(c.wu,c.zh)}</div><div class="rom">${c.r.wu}</div>`}
    ${small?'':`<div class="row" style="justify-content:center;margin-top:6px"><button class="btn sec" onclick='speak(${JSON.stringify(c.zh)},"zh")'>🔊 (표준 발음으로 재생)</button></div>`}
   </div>`}
+function dlBlock(c,key,label,bg,bd,fg,small){
+  const t=c[key]; if(!t)return '';
+  const src=(c[key+'s']==='m')?'':'<span class="st" title="사전 자동 매칭">사전</span>';
+  return `<div style="margin-top:8px;padding:8px 10px;border-radius:12px;background:${bg};border:1px solid ${bd};text-align:${small?'left':'center'}">
+   <span class="tag" style="background:${bd};color:${fg}">${label}</span> ${src}
+   <div style="font-size:${small?'17px':'24px'};line-height:1.4">${t}</div><div class="rom">${c.r[key]||''}</div></div>`}
+const twBlock=(c,s)=>dlBlock(c,'tw','대만어 台語','#eef9f1','#cfe9d7','#1d6b3a',s);
+const yueBlock=(c,s)=>dlBlock(c,'yue','광동어 粵語','#f2f0fb','#d9d3f3','#4b3fa3',s);
 function show(c,l){
   let h=`<div class="big">${txt(c,l)}</div>${rom(c,l)?`<div class="rom">${rom(c,l)}</div>`:''}`;
-  if(l==='zw')h=`<span class="tag">표준 중국어 普通话</span>`+h+wuBlock(c,false);
+  if(l==='zw')h=`<span class="tag">표준 중국어 普通话</span>`+h+wuBlock(c,false)+twBlock(c,false)+yueBlock(c,false);
   return h}
 
 function speak(t,l){
@@ -119,7 +127,7 @@ function render(){
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===S.view));
   $('#wuNote').classList.toggle('hide',S.lang!=='zw');
   const v=$('#view');
-  ({home:vHome,search:vSearch,review:vReview,quiz:vQuiz,words:vWords,prog:vProg})[S.view](v);
+  ({home:vHome,search:vSearch,dict:vDict,review:vReview,quiz:vQuiz,words:vWords,prog:vProg})[S.view](v);
 }
 
 /* ---- 학습 홈 ---- */
@@ -142,7 +150,7 @@ function vUnit(v){
   let h=`<div class="row" style="margin:0 0 8px"><button class="btn sec" onclick="S.unit=null;render()">◀ 목록</button><b>${u.e} ${u.n}</b></div>
   <div class="card"><div class="row" style="margin:0"><button class="btn" onclick="startStudy('${u.k}')">▶ 학습 시작 (새 카드 ${fresh(u.k).length}개)</button>
   <button class="btn sec" onclick="startQuiz('${u.k}')">🎯 이 단원 퀴즈</button></div></div><div class="card list">`;
-  it.forEach(c=>{h+=`<div class="it"><div class="t"><b>${txt(c,S.lang)}</b><br><span class="muted">${rom(c,S.lang)}</span>${S.lang==='zw'?wuBlock(c,true):''}<br><span class="muted">${mean(c)}</span></div>
+  it.forEach(c=>{h+=`<div class="it"><div class="t"><b>${txt(c,S.lang)}</b><br><span class="muted">${rom(c,S.lang)}</span>${S.lang==='zw'?wuBlock(c,true)+twBlock(c,true)+yueBlock(c,true):''}<br><span class="muted">${mean(c)}</span></div>
    <span class="st ${known(c)?'k':''}">${known(c)?'익힘':P(c).d?'학습중':'새'}</span><button class="btn sec" onclick='speak(${JSON.stringify(speakTxt(c,S.lang))},"${S.lang}")'>🔊</button></div>`});
   v.innerHTML=h+'</div>'}
 
@@ -209,11 +217,64 @@ function vQuiz(v){
     $('#op').appendChild(b)})}
 
 
+
+/* ---- 사전 (오프라인 사전 전체 검색) ---- */
+const DICTS={
+ cedict:{n:'중국어 CC-CEDICT',f:'dict/cedict.json',lic:'CC BY-SA 4.0 · MDBG',kind:'zh'},
+ ccanto:{n:'광동어 CC-Canto',f:'dict/ccanto.json',lic:'CC BY-SA 3.0 · Pleco',kind:'yue'},
+ taigi:{n:'대만어 台華線頂對照典',f:'dict/taigi.json',lic:'CC BY-SA 4.0 · 楊允言·鄭良偉 외 · ChhoeTaigi',kind:'tw'},
+ jmdict:{n:'일본어 JMdict',f:'dict/jmdict.json',lic:'CC BY-SA 4.0 · EDRDG',kind:'ja'},
+ kengdic:{n:'한국어 Kengdic',f:'dict/kengdic.json',lic:'MPL 2.0 / LGPL',kind:'ko'}};
+const DCACHE={};S.dk=S.dk||'cedict';S.dq=S.dq||'';
+async function loadDict(k){
+  if(DCACHE[k])return DCACHE[k];
+  const r=await fetch(DICTS[k].f);if(!r.ok)throw new Error('사전을 불러오지 못했어요 (파일 열기 방식에서는 로컬 서버가 필요해요)');
+  const rows=await r.json();const kind=DICTS[k].kind;
+  const idx=rows.map(r=>({r,t:plain(r.join(' ')),n:plain(r.join(' ')).replace(/[\s.,?!;'-]/g,'')}));
+  return DCACHE[k]={rows,idx}}
+function dictLine(k,r){
+  if(k==='cedict')return `<b style="font-size:20px">${r[0]}${r[1]!==r[0]?` <span class="muted">(${r[1]})</span>`:''}</b> <span class="rom">${r[2]}</span><div class="mean" style="font-size:16px">${r[3]}</div>`;
+  if(k==='ccanto')return `<b style="font-size:20px">${r[0]}</b> <span class="rom">${r[2]}</span><div class="mean" style="font-size:16px">${r[3]}</div>`;
+  if(k==='taigi')return `<b style="font-size:20px">${r[0]||r[1]}</b> <span class="rom">${r[1]}</span> <span class="muted">(POJ ${r[2]})</span><div class="mean" style="font-size:16px">${r[3]}</div>`;
+  if(k==='jmdict')return `<b style="font-size:20px">${r[0]||r[1]}</b> ${r[0]?`<span class="rom">${r[1]}</span>`:''} ${r[3]?'<span class="st k">자주 씀</span>':''}<div class="mean" style="font-size:16px">${r[2]}</div>`;
+  return `<b style="font-size:20px">${r[0]}</b> ${r[1]?`<span class="muted">(${r[1]})</span>`:''}<div class="mean" style="font-size:16px">${r[2]}</div>`}
+function vDict(v){
+  v.innerHTML=`<div class="card"><b>📖 사전 검색</b> <span class="muted">· 오프라인 오픈 사전 5종</span>
+   <div class="row" style="margin-top:8px"><select id="dk" style="border:1px solid var(--line);border-radius:10px;padding:9px;font:inherit">${Object.entries(DICTS).map(([k,d])=>`<option value="${k}" ${S.dk===k?'selected':''}>${d.n}</option>`).join('')}</select></div>
+   <input id="dq" type="search" placeholder="단어 · 발음 · 영어 뜻으로 검색" value="${S.dq.replace(/"/g,'&quot;')}" style="width:100%;border:1px solid var(--line);border-radius:12px;padding:12px;font:inherit;margin-top:8px">
+   <div class="muted" id="dcnt" style="margin-top:6px"></div><div class="muted" id="dlic" style="font-size:12px"></div><div class="muted" style="font-size:12px;margin-top:4px">출처·라이선스 전체: <a href="NOTICES.md" target="_blank">NOTICES.md</a></div></div><div id="dres"></div>`;
+  const run=async()=>{S.dk=$('#dk').value;S.dq=$('#dq').value;await doDict()};
+  $('#dk').onchange=run;
+  let tm=null;$('#dq').oninput=()=>{clearTimeout(tm);tm=setTimeout(run,160)};
+  doDict();if(!S.dq)$('#dq').focus()}
+async function doDict(){
+  const k=S.dk,q=plain(S.dq.trim());$('#dlic').textContent='라이선스: '+DICTS[k].lic;
+  if(!q){$('#dcnt').textContent='검색어를 입력하세요. 처음 한 번은 사전 파일을 불러오느라 몇 초 걸려요.';$('#dres').innerHTML='';return}
+  $('#dcnt').textContent='불러오는 중...';
+  let d;try{d=await loadDict(k)}catch(e){$('#dcnt').textContent=e.message;return}
+  if(k!==S.dk)return;
+  const terms=q.split(/\s+/).filter(Boolean),qn=q.replace(/[\s.,?!;'-]/g,'');
+  let res=d.idx.filter(x=>terms.every(t=>x.t.includes(t))||x.n.includes(qn));
+  const esc=[...q].map(ch=>'.*+?^${}()|[]'.includes(ch)||ch===String.fromCharCode(92)?String.fromCharCode(92)+ch:ch).join('');
+  const wordRe=new RegExp('(^|[;,/ ])'+esc+'($|[;,/ ])');
+  const rank=x=>{const kind=DICTS[k].kind;
+    const f=x.r[0]?plain(x.r[0]):'',g=plain(x.r[kind==='ja'?2:(x.r.length-1)]||'');
+    const gl=g.split(/[;,/]/).map(t=>t.trim().replace(/^(to|a|an|the) /,'').replace(/ \(.*$/,'').trim());
+    const heads=[x.r[0],x.r[1]].filter(Boolean).flatMap(t=>String(t).split('・')).map(plain);
+    if(heads.includes(q))return 0;                               // 표제어/읽기 정확히 일치
+    if(gl[0]===q)return 1;                                       // 뜻풀이 첫 번째가 정확히 일치
+    if(gl.some(t=>t===q))return 2;                               // 뜻풀이 중 하나가 정확히 일치
+    if(heads.some(t=>t.startsWith(q)))return 3;if(wordRe.test(g))return 4;if(heads.some(t=>t.includes(q)))return 5;return 6};
+  const common=x=>DICTS[k].kind==='ja'?(x.r[3]?0:1):0;
+  res=res.map(x=>({x,rk:rank(x),cm:common(x),len:x.r.join('').length})).sort((a,b)=>a.rk-b.rk||a.cm-b.cm||a.len-b.len).map(o=>[o.rk,o.len,o.x]);
+  $('#dcnt').textContent=`${res.length.toLocaleString()}개 결과`+(res.length>60?' · 상위 60개만 표시':'');
+  $('#dres').innerHTML=res.slice(0,60).map(([,,x])=>`<div class="card" style="padding:10px 12px">${dictLine(k,x.r)}</div>`).join('')||'<div class="card muted">결과가 없어요.</div>'}
+
 /* ---- 검색 ---- */
 const plain=x=>(x||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 let SIDX=null;
 function buildIndex(){
-  SIDX=D.c.map(c=>{const t=plain([c.ko,c.ja,c.en,c.zh,c.wu||'',c.r.ko,c.r.jh,c.r.jr,c.r.zh,c.r.wu,(D.units.find(u=>u.k===c.u)||{}).n,c.m||''].join(' '));return {c,t,n:t.replace(/[\s.,?!。，？！、'’-]/g,'')}});
+  SIDX=D.c.map(c=>{const t=plain([c.ko,c.ja,c.en,c.zh,c.wu||'',c.tw||'',c.yue||'',c.r.ko,c.r.jh,c.r.jr,c.r.zh,c.r.wu,c.r.tw||'',c.r.yue||'',(D.units.find(u=>u.k===c.u)||{}).n,c.m||''].join(' '));return {c,t,n:t.replace(/[\s.,?!。，？！、'’-]/g,'')}});
   SWORDS=D.words.map(w=>{const t=plain([w.wu,w.zh,w.ko,w.note,w.py].join(' '));return {w,t,n:t.replace(/[\s.,?!。，？！、'’-]/g,'')}});
 }
 let SWORDS=[];
@@ -248,6 +309,8 @@ function doSearch(){
      <div class="muted">🇯🇵 ${hlq(c.ja,tl)} <span class="rom" style="font-size:12px">${c.r.jr}</span></div>
      <div class="muted">🇬🇧 ${hlq(c.en,tl)}</div>
      <div class="muted">🇨🇳 ${hlq(c.zh,tl)} <span class="rom" style="font-size:12px">${c.r.zh}</span></div>
+     ${c.tw?`<div class="muted" style="color:#1d6b3a">대만어 ${c.tw} <span class="rom" style="font-size:12px">${c.r.tw||''}</span></div>`:''}
+     ${c.yue?`<div class="muted" style="color:#4b3fa3">광동어 ${c.yue} <span class="rom" style="font-size:12px">${c.r.yue||''}</span></div>`:''}
      ${c.wu&&c.wu!==c.zh?`<div class="muted" style="color:#a24a10">우한말 ${hl(c.wu,c.zh)} <span class="rom" style="font-size:12px">${c.r.wu}</span></div>`:''}
      <div class="row" style="margin-top:6px"><button class="btn sec" style="padding:6px 12px" data-sp="${c.id}" data-l="ko">🔊 한</button>
       <button class="btn sec" style="padding:6px 12px" data-sp="${c.id}" data-l="ja">🔊 일</button>

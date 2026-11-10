@@ -191,6 +191,7 @@ extra.load(add)
 WORDS.extend(extra.EXTRA_WORDS)
 import extra2
 UNITS.extend(extra2.EXTRA_UNITS2)
+UNITS.append(("dict","사전 기본 어휘 (빈도순)","📖",4))
 extra2.load2(add)
 WORDS.extend(extra2.EXTRA_WORDS2)
 _seen=set(); _w=[]
@@ -259,6 +260,27 @@ def ja_rom(h):
     return re.sub(r'\s+', ' ', ' '.join(parts)).strip()
 
 def run():
+    import dialects as DL, dialect_sentences as DS
+    # ---- 사전 기반 확장 단어(중·일·한 한자 일치 + 영어 뜻 교차 검증) ----
+    vp = r'C:/Users/gjrns/AppData/Local/Temp/dict/vocab_verified.json'
+    if os.path.exists(vp):
+        have = set(c['zh'] for c in C)
+        voc = json.load(open(vp, encoding='utf8'))
+        voc.sort(key=lambda x: (x['lv'], x['q']))
+        extra_n = 0
+        for v in voc:
+            zhs = DL._t2s.convert(v['t'])
+            if zhs in have or len(zhs) > 4 or len(zhs) < 2: continue   # 한 글자는 한·중·일 뜻이 어긋나기 쉬워 제외
+            ko = v['ko'] if not v['ko'].endswith('하다') else v['ko']
+            if any(c['ko'] == ko for c in C): continue
+            en = re.sub(r'\s*\(.*?\)', '', v['en'][0]).split(';')[0].strip()
+            if not en or len(en) > 40: continue
+            if re.search(r'surname|variant of|abbr\.|used in|classifier|CL:|see also|Taiwan pr|old variant|archaic|dialect|Japanese|Cantonese|diminutive|\bsb\b|\bsth\b', en, re.I): continue
+            if len(DL._han(v['t'])) < 2 and en.split()[0] in ('to', 'a', 'the') : continue
+            unit = 'adv' if False else 'dict'
+            add(unit, ko, v['ja'], v['jr'], en, zhs, None)
+            have.add(zhs); extra_n += 1
+        print('dictionary-verified words added', extra_n)
     for i, c in enumerate(C):
         c['id'] = i
         c['r'] = {
@@ -268,21 +290,27 @@ def run():
             'zh': zh_py(c['zh']),
             'wu': zh_py(c['wu']) if c['wu'] else '',
         }
-        # 한국어 로마자 보정: 이름 자리
         if '○○' in c['ko']:
             c['r']['ko'] = 'je ireumeun OO imnida'
         del c['jr']
+        # ---- 대만어·광동어 ----
+        tw, yue, tws, yues = DL.make(c, DS.TW, DS.YUE)
+        if tw: 
+            c['tw'] = tw; c['tws'] = tws
+            c['r']['tw'] = DL.tl(tw) if tws == 'm' else (c.pop('_twr', '') or DL.tl(tw))
+        if yue:
+            c['yue'] = yue; c['yues'] = yues
+            c['r']['yue'] = DL.jp(yue) if yues == 'm' else (c.pop('_yuer', '') or DL.jp(yue))
+        c.pop('_twr', None); c.pop('_yuer', None)
     words = []
     for j, (wu, zh, ko, note, sp) in enumerate(WORDS):
-        words.append(dict(id=1000 + j, wu=wu, zh=zh, ko=ko, note=note, sp=sp, py=zh_py(wu)))
+        words.append(dict(id=100000 + j, wu=wu, zh=zh, ko=ko, note=note, sp=sp, py=zh_py(wu)))
     data = dict(units=[dict(k=k, n=n, e=e, t=t) for k, n, e, t in UNITS], tiers=TIERS, c=C, words=words)
     tpl = open(os.path.join(HERE, 'template.html'), encoding='utf-8').read()
     html = tpl.replace('/*DATA*/null', json.dumps(data, ensure_ascii=False))
     open(os.path.join(HERE, 'index.html'), 'w', encoding='utf-8').write(html)
-    print('concepts', len(C), 'words', len(words), 'bytes', len(html.encode('utf-8')))
-    # 샘플 확인용 출력
-    for k in (0, 7, 27, 33, 53):
-        c = C[k]; print(c['id'], c['ko'], '|', c['r']['ko'], '|', c['ja'], c['r']['jh'], c['r']['jr'], '|', c['zh'], c['r']['zh'], '|', c['wu'], c['r']['wu'])
+    n_tw = sum(1 for c in C if c.get('tw')); n_yue = sum(1 for c in C if c.get('yue'))
+    print('concepts', len(C), 'words', len(words), 'tw', n_tw, 'yue', n_yue, 'bytes', len(html.encode('utf-8')))
 
 if __name__ == '__main__':
     run()
