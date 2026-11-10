@@ -60,8 +60,8 @@ mark{background:#fff2a8;border-radius:3px;padding:0 1px}.w b{font-size:22px}
 
 <script>
 const D=/*DATA*/null;
-const LN={ko:'한국어',ja:'日本語',en:'English',zh:'中文 (표준)',zw:'중국어 + 우한말·대만어·광동어'};
-const TTS={ko:'ko-KR',ja:'ja-JP',en:'en-US',zh:'zh-CN',zw:'zh-CN'};
+const LN={ko:'한국어',ja:'日本語',en:'English',zh:'中文 (표준)',zw:'중국어 + 우한말·대만어·광동어',yue:'광동어 粵語 (독립 학습)',tw:'대만어 台語 (독립 학습)'};
+const TTS={ko:'ko-KR',ja:'ja-JP',en:'en-US',zh:'zh-CN',zw:'zh-CN',yue:'zh-HK',tw:'zh-TW'};
 const $=s=>document.querySelector(s);
 const store=JSON.parse(localStorage.getItem('ml_state')||'{}');
 const fixL=x=>x==='wu'?'zw':x;
@@ -72,18 +72,20 @@ const DAY=864e5;
 const uorder={};D.units.forEach((u,i)=>uorder[u.k]=i);
 const tierOf={};D.units.forEach(u=>tierOf[u.k]=u.t);
 
-const txt=(c,l)=>l==='zw'?c.zh:c[l];
+const txt=(c,l)=>l==='zw'?c.zh:(l==='yue'||l==='tw')?(c[l]||''):c[l];
 function rom(c,l){
   if(l==='ko')return c.r.ko; if(l==='ja')return c.r.jh+'　'+c.r.jr; if(l==='zh')return c.r.zh;
-  if(l==='zw')return c.r.zh; return '';}
-const speakTxt=(c,l)=>l==='zw'?c.zh:c[l];
-function mean(c){let m=txt(c,S.my);return c.m?m+'  ('+c.m+')':m}
+  if(l==='zw')return c.r.zh; if(l==='yue'||l==='tw')return c.r[l]||''; return '';}
+const speakTxt=(c,l)=>l==='zw'?c.zh:(l==='yue'||l==='tw')?(c[l]||''):c[l];
+function mean(c){let m=txt(c,S.my);if(!m&&(S.lang==='yue'||S.lang==='tw')){m=(S.my==='ko'||S.my==='ja')?(c.en||c.zh):(c.en||c.zh||c.ko)}return c.m?m+'  ('+c.m+')':m}
 const key=c=>S.lang+':'+c.id;
 const P=c=>S.prog[key(c)]||{b:0,d:0};
 function mark(c,good){const p=P(c);p.b=good?Math.min(INT.length-1,p.b+1):0;p.d=Date.now()+(good?INT[p.b]*DAY:0);S.prog[key(c)]=p;save()}
 const known=c=>P(c).b>=3;
-function items(unit){return D.c.filter(c=>!unit||c.u===unit)}
-function due(){return D.c.filter(c=>{const p=S.prog[key(c)];return p&&p.d<=Date.now()}).sort((a,b)=>uorder[a.u]-uorder[b.u])}
+const own=c=>S.lang==='yue'?c.L==='yue':S.lang==='tw'?c.L==='tw':!c.L;
+function pool(){return D.c.filter(own)}
+function items(unit){return D.c.filter(c=>own(c)&&(!unit||c.u===unit))}
+function due(){return pool().filter(c=>{const p=S.prog[key(c)];return p&&p.d<=Date.now()}).sort((a,b)=>uorder[a.u]-uorder[b.u])}
 function fresh(unit){return items(unit).filter(c=>!S.prog[key(c)])}
 
 
@@ -104,9 +106,19 @@ function dlBlock(c,key,label,bg,bd,fg,small){
    <div style="font-size:${small?'17px':'24px'};line-height:1.4">${t}</div><div class="rom">${c.r[key]||''}</div></div>`}
 const twBlock=(c,s)=>dlBlock(c,'tw','대만어 台語','#eef9f1','#cfe9d7','#1d6b3a',s);
 const yueBlock=(c,s)=>dlBlock(c,'yue','광동어 粵語','#f2f0fb','#d9d3f3','#4b3fa3',s);
+function refBlock(c,l){
+  if(l!=='yue'&&l!=='tw')return '';
+  const bits=[];
+  if(c.zh&&S.my!=='zh')bits.push('🇨🇳 '+c.zh);
+  if(c.en&&S.my!=='en')bits.push('🇬🇧 '+c.en);
+  if(c.ja&&S.my!=='ja')bits.push('🇯🇵 '+c.ja);
+  if(c.ko&&S.my!=='ko')bits.push('🇰🇷 '+c.ko);
+  const src=c.s==='c'?'<span class="st" title="Tatoeba 말뭉치">말뭉치</span>':'<span class="st" title="台華線頂對照典">사전</span>';
+  return `<div class="muted" style="margin-top:6px">${src} ${bits.join(' · ')}</div>`}
 function show(c,l){
   let h=`<div class="big">${txt(c,l)}</div>${rom(c,l)?`<div class="rom">${rom(c,l)}</div>`:''}`;
   if(l==='zw')h=`<span class="tag">표준 중국어 普通话</span>`+h+wuBlock(c,false)+twBlock(c,false)+yueBlock(c,false);
+  if(l==='yue'||l==='tw')h+=refBlock(c,l);
   return h}
 
 function speak(t,l){
@@ -116,7 +128,7 @@ function speak(t,l){
 speechSynthesis&&speechSynthesis.getVoices();
 
 function init(){
-  for(const k in LN){['#my','#lang'].forEach(id=>{if(id==='#my'&&k==='zw')return;if(id==='#lang'&&k==='zh')return;$(id).add(new Option(LN[k],k))})}
+  for(const k in LN){['#my','#lang'].forEach(id=>{if(id==='#my'&&(k==='zw'||k==='yue'||k==='tw'))return;if(id==='#lang'&&k==='zh')return;$(id).add(new Option(LN[k],k))})}
   $('#my').value=S.my;$('#lang').value=S.lang;
   $('#my').onchange=()=>{S.my=$('#my').value;if(S.my===S.lang||(S.my==='zh'&&S.lang==='zw')){S.lang=S.my==='ja'?'en':'ja';$('#lang').value=S.lang}save();render()};
   $('#lang').onchange=()=>{S.lang=$('#lang').value;if(S.lang===S.my||(S.lang==='zw'&&S.my==='zh')){S.my=S.lang==='ko'?'zh':'ko';$('#my').value=S.my}save();render()};
@@ -125,7 +137,8 @@ function init(){
 }
 function render(){
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===S.view));
-  $('#wuNote').classList.toggle('hide',S.lang!=='zw');
+  $('#wuNote').classList.toggle('hide',S.lang!=='zw'&&S.lang!=='yue'&&S.lang!=='tw');
+  $('#wuNote').innerHTML=S.lang==='zw'?'한 카드에 <b>표준 중국어 · 우한말 · 대만어 · 광동어</b>가 같이 나옵니다. 우한말·대만어·광동어는 원어민 검수 없이 사전과 변환기로 만든 표기입니다. 🔊는 표준 중국어 발음으로만 재생돼요.':'<b>독립 학습 모드</b>입니다. 문장은 Tatoeba 말뭉치(사용자가 올린 문장)와 대만어 사전에서 가져왔고 원어민 검수를 받지 않았습니다. 🔊는 기기에 해당 음성이 있을 때만 나요. 한국어 뜻이 없는 문장은 영어·중국어 뜻으로 표시됩니다.';
   const v=$('#view');
   ({home:vHome,search:vSearch,dict:vDict,review:vReview,quiz:vQuiz,words:vWords,prog:vProg})[S.view](v);
 }
@@ -137,8 +150,10 @@ function vHome(v){
   if(dn)h+=`<div class="card">오늘 복습할 카드 <b>${dn}개</b> <button class="btn" style="margin-left:8px" onclick="S.view='review';render()">복습하기</button></div>`;
   h+=`<div class="muted" style="margin:0 2px 4px">순서대로 공부하면 일상에서 가장 많이 쓰는 말부터 익혀요.</div>`;
   for(const t of [1,2,3,4]){
+    const us=D.units.filter(x=>x.t===t&&items(x.k).length>0);
+    if(!us.length)continue;
     h+=`<div class="tier">${D.tiers[t]}</div><div class="units">`;
-    for(const u of D.units.filter(x=>x.t===t)){
+    for(const u of us){
       const it=items(u.k),k=it.filter(known).length;
       h+=`<div class="unit" onclick="S.unit='${u.k}';S.sess=null;render()"><b>${u.e} ${u.n}</b><small>${k}/${it.length} 익힘</small><div class="bar"><i style="width:${k/it.length*100}%"></i></div></div>`}
     h+='</div>'}
@@ -150,7 +165,7 @@ function vUnit(v){
   let h=`<div class="row" style="margin:0 0 8px"><button class="btn sec" onclick="S.unit=null;render()">◀ 목록</button><b>${u.e} ${u.n}</b></div>
   <div class="card"><div class="row" style="margin:0"><button class="btn" onclick="startStudy('${u.k}')">▶ 학습 시작 (새 카드 ${fresh(u.k).length}개)</button>
   <button class="btn sec" onclick="startQuiz('${u.k}')">🎯 이 단원 퀴즈</button></div></div><div class="card list">`;
-  it.forEach(c=>{h+=`<div class="it"><div class="t"><b>${txt(c,S.lang)}</b><br><span class="muted">${rom(c,S.lang)}</span>${S.lang==='zw'?wuBlock(c,true)+twBlock(c,true)+yueBlock(c,true):''}<br><span class="muted">${mean(c)}</span></div>
+  it.forEach(c=>{h+=`<div class="it"><div class="t"><b>${txt(c,S.lang)}</b><br><span class="muted">${rom(c,S.lang)}</span>${S.lang==='zw'?wuBlock(c,true)+twBlock(c,true)+yueBlock(c,true):''}${refBlock(c,S.lang)}<br><span class="muted">${mean(c)}</span></div>
    <span class="st ${known(c)?'k':''}">${known(c)?'익힘':P(c).d?'학습중':'새'}</span><button class="btn sec" onclick='speak(${JSON.stringify(speakTxt(c,S.lang))},"${S.lang}")'>🔊</button></div>`});
   v.innerHTML=h+'</div>'}
 
@@ -185,9 +200,9 @@ function vReview(v){
 
 /* ---- 퀴즈 ---- */
 function startQuiz(unit){
-  let pool=unit?items(unit):D.c.filter(c=>S.prog[key(c)]);
-  if(pool.length<4)pool=D.c.filter(c=>tierOf[c.u]<=(unit?tierOf[unit]:1));
-  S.sess={mode:'quiz',unit,pool,n:0,ok:0,total:10,cur:null};S.view='quiz';S.unit=null;render()}
+  let pl=unit?items(unit):pool().filter(c=>S.prog[key(c)]);
+  if(pl.length<4)pl=pool().filter(c=>tierOf[c.u]<=(unit?tierOf[unit]:1));
+  S.sess={mode:'quiz',unit,pool:pl,n:0,ok:0,total:10,cur:null};S.view='quiz';S.unit=null;render()}
 function vQuiz(v){
   const s=S.sess;
   if(!s||s.mode!=='quiz'){
@@ -198,10 +213,9 @@ function vQuiz(v){
    <div class="row"><button class="btn" onclick="startQuiz(${s.unit?`'${s.unit}'`:'null'})">다시</button><button class="btn sec" onclick="S.sess=null;S.view='home';render()">학습으로</button></div></div>`;return}
   const c=s.pool[Math.floor(Math.random()*s.pool.length)];
   const types=['listen','tr','rt'];const type=('speechSynthesis' in window)?types[Math.floor(Math.random()*3)]:types[1+Math.floor(Math.random()*2)];
-  const dist=[];const pool=D.c.filter(x=>x.id!==c.id&&(x.u===c.u||dist.length<3));
   const sh=a=>a.sort(()=>Math.random()-.5);
-  let others=sh(D.c.filter(x=>x.id!==c.id&&x.u===c.u)).slice(0,3);
-  if(others.length<3)others=others.concat(sh(D.c.filter(x=>x.id!==c.id&&!others.includes(x))).slice(0,3-others.length));
+  let others=sh(pool().filter(x=>x.id!==c.id&&x.u===c.u&&mean(x)!==mean(c))).slice(0,3);
+  if(others.length<3)others=others.concat(sh(pool().filter(x=>x.id!==c.id&&!others.includes(x)&&mean(x)!==mean(c))).slice(0,3-others.length));
   const opts=sh([c,...others]);
   const q=type==='rt'?`<div class="mean" style="margin:0">${mean(c)}</div><div class="muted">${LN[S.lang]}로 뭐라고 해요?</div>`
       :type==='listen'?`<div class="row" style="margin:0"><button class="btn" id="lp">🔊 듣고 뜻 고르기</button></div>`
@@ -296,7 +310,7 @@ function doSearch(){
   const q=plain(S.q.trim()),terms=q.split(/\s+/).filter(Boolean);
   let res=SIDX.filter(x=>(!S.su||x.c.u===S.su)&&(!terms.length||terms.every(t=>x.t.includes(t))||x.n.includes(q.replace(/[\s.,?!。，？！、'’-]/g,'')))&&(S.sk!=='new'||!known(x.c)));
   // 정렬: 정확히 일치 > 앞부분 일치 > 그 외, 같으면 단계 순
-  const score=x=>{if(!q)return 0;const f=[x.c.ko,x.c.ja,x.c.en,x.c.zh,x.c.wu||''].map(plain);
+  const score=x=>{if(!q)return 0;const f=[x.c.ko,x.c.ja,x.c.en,x.c.zh,x.c.wu||'',x.c.yue||'',x.c.tw||''].map(plain);
     if(f.some(s=>s===q))return -3;if(f.some(s=>s.startsWith(q)))return -2;if(f.some(s=>s.includes(q)))return -1;return 0};
   res=res.sort((a,b)=>score(a)-score(b)||uorder[a.c.u]-uorder[b.c.u]||a.c.id-b.c.id);
   const wr=(!S.su&&terms.length)?SWORDS.filter(x=>terms.every(t=>x.t.includes(t))||x.n.includes(q.replace(/[\s.,?!。，？！、'’-]/g,''))):[];
@@ -305,17 +319,17 @@ function doSearch(){
   res.slice(0,80).forEach(({c})=>{
     const un=D.units.find(u=>u.k===c.u);
     h+=`<div class="card" style="padding:11px"><div class="row" style="margin:0 0 4px"><span class="tag">${un.e} ${un.n}</span><span class="st ${known(c)?'k':''}">${known(c)?'익힘':'새'}</span></div>
-     <div style="font-size:19px"><b>${hlq(c.ko,tl)}</b></div>
-     <div class="muted">🇯🇵 ${hlq(c.ja,tl)} <span class="rom" style="font-size:12px">${c.r.jr}</span></div>
-     <div class="muted">🇬🇧 ${hlq(c.en,tl)}</div>
-     <div class="muted">🇨🇳 ${hlq(c.zh,tl)} <span class="rom" style="font-size:12px">${c.r.zh}</span></div>
-     ${c.tw?`<div class="muted" style="color:#1d6b3a">대만어 ${c.tw} <span class="rom" style="font-size:12px">${c.r.tw||''}</span></div>`:''}
-     ${c.yue?`<div class="muted" style="color:#4b3fa3">광동어 ${c.yue} <span class="rom" style="font-size:12px">${c.r.yue||''}</span></div>`:''}
+     <div style="font-size:19px"><b>${c.L?hlq(c[c.L],tl)+' <span class="tag" style="background:#eef1fb">'+(c.L==='yue'?'광동어':'대만어')+'</span>':hlq(c.ko,tl)}</b>${c.L&&c.r[c.L]?'<div class="rom" style="font-size:13px">'+c.r[c.L]+'</div>':''}${c.L&&c.ko?'<div class="muted">🇰🇷 '+c.ko+'</div>':''}</div>
+     ${c.ja||!c.L?`<div class="muted">🇯🇵 ${hlq(c.ja,tl)} <span class="rom" style="font-size:12px">${c.r.jr||''}</span></div>`:''}
+     ${c.en?`<div class="muted">🇬🇧 ${hlq(c.en,tl)}</div>`:''}
+     ${c.zh?`<div class="muted">🇨🇳 ${hlq(c.zh,tl)} <span class="rom" style="font-size:12px">${c.r.zh}</span></div>`:''}
+     ${c.tw&&c.L!=='tw'?`<div class="muted" style="color:#1d6b3a">대만어 ${c.tw} <span class="rom" style="font-size:12px">${c.r.tw||''}</span></div>`:''}
+     ${c.yue&&c.L!=='yue'?`<div class="muted" style="color:#4b3fa3">광동어 ${c.yue} <span class="rom" style="font-size:12px">${c.r.yue||''}</span></div>`:''}
      ${c.wu&&c.wu!==c.zh?`<div class="muted" style="color:#a24a10">우한말 ${hl(c.wu,c.zh)} <span class="rom" style="font-size:12px">${c.r.wu}</span></div>`:''}
-     <div class="row" style="margin-top:6px"><button class="btn sec" style="padding:6px 12px" data-sp="${c.id}" data-l="ko">🔊 한</button>
+     <div class="row" style="margin-top:6px">${c.L?`<button class="btn sec" style="padding:6px 12px" data-sp="${c.id}" data-l="${c.L}">🔊 ${c.L==='yue'?'광동어':'대만어'}</button>`:`<button class="btn sec" style="padding:6px 12px" data-sp="${c.id}" data-l="ko">🔊 한</button>
       <button class="btn sec" style="padding:6px 12px" data-sp="${c.id}" data-l="ja">🔊 일</button>
       <button class="btn sec" style="padding:6px 12px" data-sp="${c.id}" data-l="en">🔊 영</button>
-      <button class="btn sec" style="padding:6px 12px" data-sp="${c.id}" data-l="zh">🔊 중</button>
+      <button class="btn sec" style="padding:6px 12px" data-sp="${c.id}" data-l="zh">🔊 중</button>`}
       <button class="btn" style="padding:6px 12px" data-go="${c.u}">단원 열기</button></div></div>`});
   if(res.length>80)h+=`<div class="muted" style="text-align:center">상위 80개만 표시합니다. 검색어를 더 구체적으로 입력해 보세요.</div>`;
   if(wr.length){h+=`<div class="tier">🍜 우한말 단어</div><div class="card">`;
@@ -323,7 +337,7 @@ function doSearch(){
     h+='</div>'}
   if(!res.length&&!wr.length&&(terms.length||S.su))h='<div class="card muted">검색 결과가 없어요. 다른 단어나 발음으로 찾아 보세요.</div>';
   $('#sres').innerHTML=h;
-  $('#sres').querySelectorAll('[data-sp]').forEach(b=>b.onclick=()=>{const c=D.c.find(x=>x.id==b.dataset.sp);speak(c[b.dataset.l],b.dataset.l)});
+  $('#sres').querySelectorAll('[data-sp]').forEach(b=>b.onclick=()=>{const c=D.c.find(x=>x.id==b.dataset.sp);speak(c[b.dataset.l],b.dataset.l==='yue'||b.dataset.l==='tw'?b.dataset.l:b.dataset.l)});
   $('#sres').querySelectorAll('[data-wsp]').forEach(b=>b.onclick=()=>{const w=D.words.find(x=>x.id==b.dataset.wsp);speak(w.sp,'zh')});
   $('#sres').querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{S.view='home';S.unit=b.dataset.go;S.sess=null;render();window.scrollTo(0,0)})}
 
@@ -337,9 +351,9 @@ function vWords(v){
 
 /* ---- 진도 ---- */
 function vProg(v){
-  const all=D.c,k=all.filter(known).length,st=all.filter(c=>S.prog[key(c)]).length;
+  const all=pool(),k=all.filter(known).length,st=all.filter(c=>S.prog[key(c)]).length;
   let h=`<div class="card"><b>${LN[S.lang]}</b><div class="big">${k} / ${all.length} 익힘</div><div class="muted">시작한 카드 ${st}개 · 오늘 복습 ${due().length}개</div><div class="bar"><i style="width:${k/all.length*100}%"></i></div></div>`;
-  for(const t of [1,2,3,4]){const it=all.filter(c=>tierOf[c.u]===t),kk=it.filter(known).length;
+  for(const t of [1,2,3,4]){const it=all.filter(c=>tierOf[c.u]===t),kk=it.filter(known).length;if(!it.length)continue;
     h+=`<div class="card"><b>${D.tiers[t]}</b> <span class="muted">${kk}/${it.length}</span><div class="bar"><i style="width:${kk/it.length*100}%"></i></div></div>`}
   h+=`<div class="card"><div class="muted">진도는 이 브라우저에만 저장됩니다.</div><div class="row"><button class="btn bad" onclick="if(confirm('이 언어의 진도를 초기화할까요?')){for(const k in S.prog)if(k.startsWith(S.lang+':'))delete S.prog[k];save();render()}">이 언어 진도 초기화</button></div></div>`;
   v.innerHTML=h}

@@ -321,6 +321,21 @@ def run():
     words = []
     for j, (wu, zh, ko, note, sp) in enumerate(WORDS):
         words.append(dict(id=100000 + j, wu=wu, zh=zh, ko=ko, note=note, sp=sp, py=zh_py(wu)))
+    import yn
+    YN = yn.build_yn(C, DL._t2s.convert)
+    print('standalone Cantonese', len(YN['cy']), 'Taiwanese', len(YN['cn']))
+    # 독립 카드를 기존 카드 구조에 맞춰 D.c 에 합친다. 필드: ko, ja, en, zh 가 비어 있을 수 있어 "표시 가능한 값"으로 채운다.
+    def to_card(x, lang):
+        c = dict(id=x['id'], u=x['u'], ko=x['ko'], en=x['en'], zh=x['zh'] or '', ja=x['ja'] or '', wu=None, L=lang, s=x['s'], ks=x.get('ks', ''))
+        c['r'] = dict(ko='', jh='', jr='', zh=zh_py(c['zh']) if c['zh'] else '', wu='')
+        c[lang] = x['t']; c['r'][lang] = x['r']
+        if lang == 'yue': c['yue'] = x['t']; c['yues'] = 'c'
+        if lang == 'tw':  c['tw'] = x['t'];  c['tws'] = 'c' if x['s'] == 'c' else 'd'
+        return c
+    for x in YN['cy']: C.append(to_card(x, 'yue'))
+    for x in YN['cn']: C.append(to_card(x, 'tw'))
+    UNITS.extend((u['k'], u['n'], u['e'], u['t']) for u in YN['uy'])
+    UNITS.extend((u['k'], u['n'], u['e'], u['t']) for u in YN['un'])
     data = dict(units=[dict(k=k, n=n, e=e, t=t) for k, n, e, t in UNITS], tiers=TIERS, c=C, words=words)
     tpl = open(os.path.join(HERE, 'template.html'), encoding='utf-8').read()
     html = tpl.replace('/*DATA*/null', json.dumps(data, ensure_ascii=False))
