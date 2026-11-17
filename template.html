@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <script>/* Android(Capacitor) WebView: speechSynthesis 대체 (네이티브 TTS) */
-(function(){if(window.speechSynthesis)return;var C=window.Capacitor,T=C&&C.Plugins&&C.Plugins.TextToSpeech;if(!T)return;
+(function(){if(window.speechSynthesis)return;var C=window.Capacitor,T=C&&C.Plugins&&(C.Plugins.MultiTts||C.Plugins.TextToSpeech);if(!T)return;
 window.SpeechSynthesisUtterance=function(t){this.text=t;this.lang='';this.rate=1;this.pitch=1;this.voice=null;this.onend=null;this.onerror=null};
 window.speechSynthesis={speaking:false,getVoices:function(){return[]},cancel:function(){try{T.stop()}catch(e){}},
 speak:function(u){var s=this;s.speaking=true;T.speak({text:u.text,lang:u.lang||'ko-KR',rate:u.rate||1,pitch:u.pitch||1,volume:1,category:'ambient'}).then(function(){s.speaking=false;u.onend&&u.onend()}).catch(function(e){s.speaking=false;var m=String(e&&e.message||e);if(/not supported/i.test(m)&&!window.__ttsWarn){window.__ttsWarn=1;alert('이 기기에 '+(u.lang||'')+' 음성이 없어요. 설정 > 일반 > 텍스트 음성 변환(TTS)에서 해당 언어 음성 데이터를 설치해 주세요.')}u.onerror&&u.onerror(e)})}};
