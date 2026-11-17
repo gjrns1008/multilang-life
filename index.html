@@ -206,7 +206,7 @@ function speak(t,l){
   if(!('speechSynthesis' in window))return alert('이 브라우저는 음성 재생을 지원하지 않아요.');
   speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang=TTS[l]||l;u.rate=.85;
   const v=speechSynthesis.getVoices().find(x=>x.lang.replace('_','-').startsWith(u.lang));if(v)u.voice=v;speechSynthesis.speak(u)}
-speechSynthesis&&speechSynthesis.getVoices();
+('speechSynthesis' in window)&&speechSynthesis.getVoices();
 
 function init(){
   for(const k in LN){['#my','#lang'].forEach(id=>{if(id==='#my'&&(k==='zw'||k==='yue'||k==='tw'))return;if(id==='#lang'&&k==='zh')return;$(id).add(new Option(LN[k],k))})}
